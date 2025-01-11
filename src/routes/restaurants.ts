@@ -88,6 +88,7 @@ RestaurantRouter.post(
 
 RestaurantRouter.get(
   "/:restaurantId/review",
+  checkIfRestaurantExist,
   async (req: Request<{ restaurantId: string }>, res, next) => {
     const { restaurantId } = req.params;
     const { page = 1, limit = 10 } = req.query;
@@ -103,6 +104,34 @@ RestaurantRouter.get(
       );
 
       successResponse(res, result, "Review fetched successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+RestaurantRouter.delete(
+  "/:restaurantId/review/:reviewId",
+  checkIfRestaurantExist,
+  async (
+    req: Request<{ restaurantId: string; reviewId: string }>,
+    res,
+    next
+  ) => {
+    const { restaurantId, reviewId } = req.params;
+    try {
+      const reviewKey = reviewKeyById(restaurantId);
+      const reviewDetailKey = reviewDetailById(reviewId);
+      const client = await initalizeRedisClient();
+      const [removeResult, deleteResult] = await Promise.all([
+        client.lRem(reviewKey, 0, reviewId),
+        client.del(reviewDetailKey),
+      ]);
+      if (removeResult === 0 && deleteResult === 0) {
+        errorResponse(res, 404, "Review Not FOund");
+        return;
+      }
+      successResponse(res, reviewId, "Review Successfully deleted");
     } catch (error) {
       next(error);
     }
