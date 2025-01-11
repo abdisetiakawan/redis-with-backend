@@ -5,6 +5,9 @@ import { type Review, ReviewSchema } from "../schemas/review";
 import { initalizeRedisClient } from "../helper/redis";
 import { v4 as uuidv4 } from "uuid";
 import {
+  cuisineKey,
+  cuisinesKey,
+  restaurantCuisinesKeyById,
   restaurantKeyById,
   reviewDetailById,
   reviewKeyById,
@@ -27,8 +30,16 @@ RestaurantRouter.post(
         name: data.name,
         location: data.location,
       };
-
-      await client.hSet(restaurantKey, hashData);
+      await Promise.all([
+        ...data.cuisines.map((cuisine) =>
+          Promise.all([
+            client.sAdd(cuisinesKey, cuisine),
+            client.sAdd(cuisineKey(cuisine), id),
+            client.sAdd(restaurantCuisinesKeyById(id), cuisine),
+          ])
+        ),
+        client.hSet(restaurantKey, hashData),
+      ]);
       successResponse(res, hashData, "Added New Restaurant");
     } catch (error) {
       next(error);
@@ -44,11 +55,16 @@ RestaurantRouter.get(
     try {
       const client = await initalizeRedisClient();
       const restaurantKey = restaurantKeyById(restaurantId);
-      const [viewcount, result] = await Promise.all([
+      const [viewcount, result, cuisine] = await Promise.all([
         client.hIncrBy(restaurantKey, "viewCount", 1),
         client.hGetAll(restaurantKey),
+        client.sMembers(restaurantCuisinesKeyById(restaurantId)),
       ]);
-      successResponse(res, result, "Successfully received the Restaurant Data");
+      successResponse(
+        res,
+        { ...result, cuisine },
+        "Successfully received the Restaurant Data"
+      );
     } catch (error) {
       next(error);
     }
