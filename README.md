@@ -1,4 +1,6 @@
 # Redis with Backend
+#
+
 ## Deskripsi Proyek
 Proyek ini bertujuan untuk memantapkan pemahaman tentang tipe data Redis dan penggunaannya sebagai database in-memory. Proyek ini menggunakan Redis bersama dengan backend berbasis Express.js untuk mengelola data restoran dan masakan.
 
